@@ -11,6 +11,10 @@ app.use(cors());
 app.use(express.json());
 
 const db = require('./config/db');
+const bookRoutes = require('./routes/bookRoutes');
+
+// Routes
+app.use('/api/books', bookRoutes);
 
 // Basic Route with DB test
 app.get('/api/health', async (req, res) => {
