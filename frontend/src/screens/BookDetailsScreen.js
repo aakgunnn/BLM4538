@@ -1,19 +1,47 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Star, BookOpen, Calendar, Hash, Heart } from 'lucide-react-native';
 import Colors from '../constants/Colors';
-import { booksData } from '../data/mockData';
+import apiService from '../services/apiService';
 
 const { width } = Dimensions.get('window');
 
 const BookDetailsScreen = ({ route, navigation }) => {
   const { id } = route.params || { id: "1" };
-  const book = booksData.find((b) => b.id === id);
+  const [book, setBook] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  if (!book) {
+  useEffect(() => {
+    const fetchBook = async () => {
+      try {
+        const data = await apiService.getBookById(id);
+        setBook(data);
+      } catch (err) {
+        setError('Kitap bulunamadı.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBook();
+  }, [id]);
+
+  if (loading) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.errorText}>Book not found</Text>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (error || !book) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error || 'Book not found'}</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+          <Text style={{ color: Colors.primary, fontSize: 16 }}>← Geri Dön</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -114,6 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: Colors.background,
   },
   header: {
     paddingHorizontal: 16,
@@ -280,7 +309,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: {
-    color: Colors.error,
+    color: Colors.textSecondary,
     fontSize: 16,
   },
 });

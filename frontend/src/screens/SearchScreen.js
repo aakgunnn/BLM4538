@@ -1,28 +1,96 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Search as SearchIcon, X } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
-import { booksData } from '../data/mockData';
+import apiService from '../services/apiService';
 
 const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // Debounce timer ref
+  const timerRef = React.useRef(null);
+
+  const handleSearch = useCallback((text) => {
+    setSearchQuery(text);
+
+    // Clear previous timer
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    if (text.trim().length === 0) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+
+    // Debounce: wait 500ms after user stops typing
+    timerRef.current = setTimeout(async () => {
+      setLoading(true);
+      setHasSearched(true);
+      try {
+        const data = await apiService.searchBooks(text);
+        setResults(data);
+      } catch (err) {
+        console.error('Search error:', err);
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+  }, []);
 
   const handleBookPress = (id) => {
     navigation.navigate('Anasayfa', { screen: 'BookDetails', params: { id } });
   };
 
-  const filteredBooks = booksData.filter(
-    (book) =>
-      book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      book.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const clearSearch = () => {
+    setSearchQuery("");
+    setResults([]);
+    setHasSearched(false);
+  };
 
   const recentSearches = ["Pride and Prejudice", "James Clear", "Science Fiction"];
 
+  const renderEmptyContent = () => (
+    <View style={styles.content}>
+      {/* Recent Searches */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent Searches</Text>
+        {recentSearches.map((search, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.recentItem}
+            onPress={() => handleSearch(search)}
+          >
+            <SearchIcon size={16} color={Colors.textSecondary} />
+            <Text style={styles.recentText}>{search}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Popular Categories */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Popular Categories</Text>
+        <View style={styles.categoryGrid}>
+          {["Fiction", "Classic", "Self-Help", "Science Fiction"].map((category) => (
+            <TouchableOpacity
+              key={category}
+              style={styles.categoryCard}
+              onPress={() => handleSearch(category)}
+            >
+              <Text style={styles.categoryName}>{category}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
@@ -32,81 +100,55 @@ const SearchScreen = ({ navigation }) => {
           <SearchIcon style={styles.searchIcon} size={20} color={Colors.textSecondary} />
           <TextInput
             style={styles.input}
-            placeholder="Search books, authors, categories..."
+            placeholder="Search books, authors..."
             placeholderTextColor={Colors.textSecondary}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearch}
           />
           {searchQuery !== "" && (
-            <TouchableOpacity onPress={() => setSearchQuery("")} style={styles.clearIcon}>
+            <TouchableOpacity onPress={clearSearch} style={styles.clearIcon}>
               <X size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
       </View>
 
-      {/* Search Results */}
-      {searchQuery ? (
-        <View style={styles.content}>
-          <Text style={styles.resultCount}>
-            {filteredBooks.length} {filteredBooks.length === 1 ? "result" : "results"} found
-          </Text>
-          <View style={styles.resultsList}>
-            {filteredBooks.map((book) => (
-              <BookCard 
-                key={book.id} 
-                book={book} 
-                variant="compact" 
-                onPress={() => handleBookPress(book.id)}
-              />
-            ))}
-          </View>
-          {filteredBooks.length === 0 && (
+      {/* Content */}
+      {!hasSearched ? (
+        renderEmptyContent()
+      ) : loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Aranıyor...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.content}
+          ListHeaderComponent={
+            <Text style={styles.resultCount}>
+              {results.length} {results.length === 1 ? "result" : "results"} found
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <BookCard 
+              book={item} 
+              variant="compact" 
+              onPress={() => handleBookPress(item.id)}
+            />
+          )}
+          ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <SearchIcon size={48} color={Colors.muted} />
               <Text style={styles.emptyText}>No books found</Text>
               <Text style={styles.emptySubText}>Try searching with different keywords</Text>
             </View>
-          )}
-        </View>
-      ) : (
-        <View style={styles.content}>
-          {/* Recent Searches */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Searches</Text>
-            {recentSearches.map((search, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.recentItem}
-                onPress={() => setSearchQuery(search)}
-              >
-                <SearchIcon size={16} color={Colors.textSecondary} />
-                <Text style={styles.recentText}>{search}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Popular Categories */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Popular Categories</Text>
-            <View style={styles.categoryGrid}>
-              {["Fiction", "Classic", "Self-Help", "Science Fiction"].map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={styles.categoryCard}
-                  onPress={() => setSearchQuery(category)}
-                >
-                  <Text style={styles.categoryName}>{category}</Text>
-                  <Text style={styles.categoryCount}>
-                    {booksData.filter((b) => b.category === category).length} books
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
+          }
+          showsVerticalScrollIndicator={false}
+        />
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -114,6 +156,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: Colors.textSecondary,
   },
   header: {
     paddingHorizontal: 24,
@@ -154,9 +206,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     marginBottom: 16,
-  },
-  resultsList: {
-    marginBottom: 24,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -215,11 +264,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.text,
-  },
-  categoryCount: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 4,
   },
 });
 

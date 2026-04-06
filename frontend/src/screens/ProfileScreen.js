@@ -1,14 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { User, BookOpen, Clock, Award, Settings, LogOut, ChevronRight, Palette } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
-import { booksData } from '../data/mockData';
+import apiService from '../services/apiService';
 
 const ProfileScreen = () => {
-  const borrowedBooks = booksData.filter((book) => !book.available);
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const totalBooksRead = 12;
   const readingStreak = 7;
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const data = await apiService.getBooks();
+        setBooks(data);
+      } catch (err) {
+        console.error('ProfileScreen fetch error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBooks();
+  }, []);
+
+  const borrowedBooks = books.filter((book) => !book.available);
 
   const menuItems = [
     { icon: Palette, label: "Design System", action: "design-system" },

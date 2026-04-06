@@ -29,7 +29,7 @@ const searchBooks = async (req, res) => {
   const { q } = req.query;
   try {
     const result = await db.query(
-      'SELECT * FROM books WHERE title ILIKE $1 OR author ILIKE $1',
+      'SELECT * FROM books WHERE title ILIKE $1 OR author ILIKE $1 OR category ILIKE $1',
       [`%${q}%`]
     );
     res.status(200).json(result.rows);
