@@ -6,8 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="a5716f46-7b6f-4d08-a740-fcc8b24d1302" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/controllers/bookController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/bookController.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/schema.sql" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

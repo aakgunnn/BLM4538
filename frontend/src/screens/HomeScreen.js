@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { BookOpen, TrendingUp, Clock, RefreshCw } from 'lucide-react-native';
+import { BookOpen, TrendingUp, Clock, RefreshCw, Search } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
 import apiService from '../services/apiService';
@@ -73,6 +73,16 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.greeting}>Good afternoon 👋</Text>
         <Text style={styles.subGreeting}>What would you like to read today?</Text>
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => navigation.getParent()?.navigate('Arama')}
+          activeOpacity={0.8}
+        >
+          <Search size={18} color={Colors.textSecondary} />
+          <Text style={styles.searchPlaceholder}>Search books, authors...</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stats Cards */}
@@ -211,6 +221,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 16,
+  },
+  searchPlaceholder: {
+    fontSize: 15,
+    color: Colors.textSecondary,
+    marginLeft: 10,
   },
   statsContainer: {
     flexDirection: 'row',
