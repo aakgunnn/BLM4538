@@ -1,38 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { User, BookOpen, Clock, Award, Settings, LogOut, ChevronRight, Palette } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
+import { User, BookOpen, Clock, Award, Settings, LogOut, ChevronRight, Shield, RotateCcw } from 'lucide-react-native';
 import Colors from '../constants/Colors';
-import BookCard from '../components/BookCard';
 import apiService from '../services/apiService';
+import { useAuth } from '../context/AuthContext';
 
 const ProfileScreen = () => {
-  const [books, setBooks] = useState([]);
+  const { user, logout, isAdmin } = useAuth();
+  const [borrowings, setBorrowings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const totalBooksRead = 12;
-  const readingStreak = 7;
+
+  const fetchBorrowings = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await apiService.getUserBorrowings(user.id);
+      setBorrowings(data);
+    } catch (err) {
+      console.error('Borrowings fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const data = await apiService.getBooks();
-        setBooks(data);
-      } catch (err) {
-        console.error('ProfileScreen fetch error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBooks();
-  }, []);
+    fetchBorrowings();
+  }, [fetchBorrowings]);
 
-  const borrowedBooks = books.filter((book) => !book.available);
+  const activeBorrowings = borrowings.filter(b => b.status === 'borrowed');
+  const returnedCount = borrowings.filter(b => b.status === 'returned').length;
 
-  const menuItems = [
-    { icon: Palette, label: "Design System", action: "design-system" },
-    { icon: Settings, label: "Settings", action: "settings" },
-    { icon: Award, label: "Achievements", action: "achievements" },
-    { icon: LogOut, label: "Log Out", action: "logout" },
-  ];
+  const handleReturn = async (borrowingId) => {
+    try {
+      await apiService.returnBook(borrowingId);
+      Alert.alert('Başarılı! ✅', 'Kitap iade edildi.');
+      fetchBorrowings();
+    } catch (err) {
+      Alert.alert('Hata', err.message || 'İade başarısız.');
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Çıkış Yap',
+      'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        { text: 'Çıkış Yap', onPress: logout, style: 'destructive' },
+      ]
+    );
+  };
+
+  const memberSince = user?.created_at 
+    ? new Date(user.created_at).getFullYear() 
+    : 2026;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -43,8 +63,17 @@ const ProfileScreen = () => {
             <User size={32} color={Colors.surface} />
           </View>
           <View>
-            <Text style={styles.userName}>Sarah Johnson</Text>
-            <Text style={styles.userSince}>Member since 2024</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.userName}>{user?.full_name || 'Kullanıcı'}</Text>
+              {isAdmin && (
+                <View style={styles.adminBadge}>
+                  <Shield size={12} color={Colors.surface} />
+                  <Text style={styles.adminText}>Admin</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.userSince}>Member since {memberSince}</Text>
+            <Text style={styles.userEmail}>{user?.email}</Text>
           </View>
         </View>
 
@@ -52,73 +81,89 @@ const ProfileScreen = () => {
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <BookOpen size={20} color={Colors.surface} />
-            <Text style={styles.statValue}>{totalBooksRead}</Text>
+            <Text style={styles.statValue}>{returnedCount}</Text>
             <Text style={styles.statLabel}>Books Read</Text>
           </View>
           <View style={styles.statBox}>
             <Clock size={20} color={Colors.surface} />
-            <Text style={styles.statValue}>{borrowedBooks.length}</Text>
+            <Text style={styles.statValue}>{activeBorrowings.length}</Text>
             <Text style={styles.statLabel}>Borrowed</Text>
           </View>
           <View style={styles.statBox}>
             <Award size={20} color={Colors.surface} />
-            <Text style={styles.statValue}>{readingStreak}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
+            <Text style={styles.statValue}>{borrowings.length}</Text>
+            <Text style={styles.statLabel}>Total</Text>
           </View>
         </View>
       </View>
 
       {/* Currently Borrowed */}
-      {borrowedBooks.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Currently Borrowed</Text>
-          {borrowedBooks.map((book) => (
-            <BookCard key={book.id} book={book} variant="compact" />
-          ))}
-        </View>
-      )}
-
-      {/* Reading Goal */}
       <View style={styles.section}>
-        <View style={styles.goalCard}>
-          <View style={styles.goalHeader}>
-            <Text style={styles.goalTitle}>2026 Reading Goal</Text>
-            <Text style={styles.goalProgress}>{totalBooksRead}/24 books</Text>
+        <Text style={styles.sectionTitle}>Currently Borrowed</Text>
+        {loading ? (
+          <ActivityIndicator size="small" color={Colors.primary} />
+        ) : activeBorrowings.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>Ödünç alınmış kitap yok</Text>
           </View>
-          <View style={styles.progressBar}>
-            <View 
-              style={[styles.progressFill, { width: `${(totalBooksRead / 24) * 100}%` }]} 
-            />
-          </View>
-        </View>
+        ) : (
+          activeBorrowings.map((item) => (
+            <View key={item.id} style={styles.borrowCard}>
+              {item.cover_url && (
+                <Image source={{ uri: item.cover_url }} style={styles.borrowCover} />
+              )}
+              <View style={styles.borrowInfo}>
+                <Text style={styles.borrowTitle}>{item.title}</Text>
+                <Text style={styles.borrowAuthor}>{item.author}</Text>
+                <Text style={styles.borrowDate}>
+                  Alınma: {new Date(item.borrow_date).toLocaleDateString('tr-TR')}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.returnButton}
+                onPress={() => handleReturn(item.id)}
+              >
+                <RotateCcw size={16} color={Colors.primary} />
+                <Text style={styles.returnText}>İade</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
       </View>
 
       {/* Menu List */}
       <View style={styles.menuContainer}>
-        {menuItems.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <TouchableOpacity 
-              key={index} 
-              style={[
-                styles.menuItem,
-                index !== menuItems.length - 1 && styles.menuItemBorder
-              ]}
-              activeOpacity={0.7}
-            >
-              <View style={styles.menuLeft}>
-                <Icon size={20} color={Colors.textSecondary} />
-                <Text style={styles.menuLabel}>{item.label}</Text>
-              </View>
-              <ChevronRight size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-          );
-        })}
+        <TouchableOpacity style={[styles.menuItem, styles.menuItemBorder]} activeOpacity={0.7}>
+          <View style={styles.menuLeft}>
+            <Settings size={20} color={Colors.textSecondary} />
+            <Text style={styles.menuLabel}>Settings</Text>
+          </View>
+          <ChevronRight size={20} color={Colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.menuItem, styles.menuItemBorder]} activeOpacity={0.7}>
+          <View style={styles.menuLeft}>
+            <Award size={20} color={Colors.textSecondary} />
+            <Text style={styles.menuLabel}>Achievements</Text>
+          </View>
+          <ChevronRight size={20} color={Colors.textSecondary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7}>
+          <View style={styles.menuLeft}>
+            <LogOut size={20} color="#EF4444" />
+            <Text style={[styles.menuLabel, { color: '#EF4444' }]}>Log Out</Text>
+          </View>
+          <ChevronRight size={20} color="#EF4444" />
+        </TouchableOpacity>
       </View>
 
       {/* Version */}
       <View style={styles.footer}>
         <Text style={styles.version}>Library App v1.0.0</Text>
+        <Text style={styles.roleInfo}>
+          Role: {isAdmin ? 'Admin' : 'Member'}
+        </Text>
       </View>
     </ScrollView>
   );
@@ -159,6 +204,26 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  userEmail: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 2,
+  },
+  adminBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  adminText: {
+    fontSize: 11,
+    color: Colors.surface,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -191,36 +256,64 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginBottom: 16,
   },
-  goalCard: {
+  emptyCard: {
     backgroundColor: Colors.secondary,
     borderRadius: 12,
-    padding: 16,
-  },
-  goalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 12,
   },
-  goalTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+  emptyText: {
+    color: Colors.textSecondary,
+    fontSize: 14,
+  },
+  borrowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  borrowCover: {
+    width: 48,
+    height: 68,
+    borderRadius: 6,
+    marginRight: 12,
+    backgroundColor: Colors.muted,
+  },
+  borrowInfo: {
+    flex: 1,
+  },
+  borrowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
     color: Colors.text,
   },
-  goalProgress: {
-    fontSize: 14,
+  borrowAuthor: {
+    fontSize: 13,
     color: Colors.textSecondary,
+    marginTop: 2,
   },
-  progressBar: {
-    height: 8,
-    backgroundColor: Colors.muted,
-    borderRadius: 4,
-    overflow: 'hidden',
+  borrowDate: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    marginTop: 4,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: 4,
+  returnButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 144, 226, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  returnText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+    marginLeft: 4,
   },
   menuContainer: {
     marginHorizontal: 24,
@@ -257,6 +350,11 @@ const styles = StyleSheet.create({
   version: {
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+  roleInfo: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
   },
 });
 

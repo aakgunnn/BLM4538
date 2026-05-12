@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Alert } from 'react-native';
 import { ArrowLeft, Star, BookOpen, Calendar, Hash, Heart } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import apiService from '../services/apiService';
+import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
 
@@ -11,6 +12,8 @@ const BookDetailsScreen = ({ route, navigation }) => {
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [borrowing, setBorrowing] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -118,11 +121,25 @@ const BookDetailsScreen = ({ route, navigation }) => {
       {/* Sticky Bottom Actions */}
       <View style={styles.bottomActions}>
         <TouchableOpacity 
-          style={[styles.borrowButton, !book.available && styles.disabledButton]}
-          disabled={!book.available}
+          style={[styles.borrowButton, (!book.available || borrowing) && styles.disabledButton]}
+          disabled={!book.available || borrowing}
+          onPress={async () => {
+            setBorrowing(true);
+            try {
+              await apiService.borrowBook(user.id, book.id);
+              Alert.alert('Başarılı! ✅', 'Kitap ödünç alındı. 14 gün içinde iade etmelisiniz.');
+              // Refresh book data
+              const updated = await apiService.getBookById(id);
+              setBook(updated);
+            } catch (err) {
+              Alert.alert('Hata', err.message || 'Ödünç alma başarısız.');
+            } finally {
+              setBorrowing(false);
+            }
+          }}
         >
           <Text style={styles.borrowButtonText}>
-            {book.available ? "Borrow Book" : "Currently Borrowed"}
+            {borrowing ? "İşleniyor..." : book.available ? "Borrow Book" : "Currently Borrowed"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.favoriteButton}>

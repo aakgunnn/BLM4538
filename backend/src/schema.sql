@@ -111,3 +111,16 @@ INSERT INTO books (title, author, isbn, category, rating, pages, description, co
     true
 )
 ON CONFLICT (isbn) DO NOTHING;
+
+-- =============================================
+-- Seed Data: Test User
+-- =============================================
+INSERT INTO users (id, full_name, email, password, role) VALUES
+(
+    'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    'Sarah Johnson',
+    'sarah@library.com',
+    'test123',
+    'member'
+)
+ON CONFLICT (email) DO NOTHING;

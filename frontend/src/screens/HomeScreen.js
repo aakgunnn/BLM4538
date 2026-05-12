@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Dimensions, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { BookOpen, TrendingUp, Clock, RefreshCw, Search } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
@@ -9,6 +9,9 @@ const { width } = Dimensions.get('window');
 
 const HomeScreen = ({ navigation }) => {
   const [books, setBooks] = useState([]);
+  const [allBooks, setAllBooks] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -18,6 +21,10 @@ const HomeScreen = ({ navigation }) => {
       setError(null);
       const data = await apiService.getBooks();
       setBooks(data);
+      setAllBooks(data);
+      // Fetch categories
+      const cats = await apiService.getCategories();
+      setCategories(cats);
     } catch (err) {
       setError('Kitaplar yüklenemedi. Sunucu bağlantısını kontrol edin.');
       console.error(err);
@@ -30,6 +37,21 @@ const HomeScreen = ({ navigation }) => {
   useEffect(() => {
     fetchBooks();
   }, [fetchBooks]);
+
+  const handleCategorySelect = useCallback(async (category) => {
+    if (selectedCategory === category) {
+      setSelectedCategory(null);
+      setBooks(allBooks);
+      return;
+    }
+    setSelectedCategory(category);
+    try {
+      const data = await apiService.getBooksByCategory(category);
+      setBooks(data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [selectedCategory, allBooks]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -102,6 +124,28 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.statValue}>{books.filter(b => b.available).length}</Text>
           <Text style={styles.statLabel}>Available</Text>
         </View>
+      </View>
+
+      {/* Category Chips */}
+      <View style={styles.categorySection}>
+        <Text style={styles.sectionTitle}>Kategoriler</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
+          <TouchableOpacity
+            style={[styles.categoryChip, !selectedCategory && styles.categoryChipActive]}
+            onPress={() => { setSelectedCategory(null); setBooks(allBooks); }}
+          >
+            <Text style={[styles.categoryChipText, !selectedCategory && styles.categoryChipTextActive]}>Tümü</Text>
+          </TouchableOpacity>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.categoryChip, selectedCategory === cat && styles.categoryChipActive]}
+              onPress={() => handleCategorySelect(cat)}
+            >
+              <Text style={[styles.categoryChipText, selectedCategory === cat && styles.categoryChipTextActive]}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Currently Borrowed */}
@@ -291,6 +335,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+  },
+  categorySection: {
+    paddingHorizontal: 24,
+    marginBottom: 20,
+  },
+  categoryScroll: {
+    marginTop: 12,
+  },
+  categoryChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginRight: 8,
+  },
+  categoryChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.textSecondary,
+  },
+  categoryChipTextActive: {
+    color: Colors.surface,
   },
 });
 

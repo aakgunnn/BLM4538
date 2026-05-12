@@ -12,9 +12,15 @@ app.use(express.json());
 
 const db = require('./config/db');
 const bookRoutes = require('./routes/bookRoutes');
+const borrowingRoutes = require('./routes/borrowingRoutes');
+const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Routes
 app.use('/api/books', bookRoutes);
+app.use('/api/borrowings', borrowingRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Basic Route with DB test
 app.get('/api/health', async (req, res) => {
