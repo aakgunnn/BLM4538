@@ -4,6 +4,7 @@ import { BookOpen, TrendingUp, Clock, RefreshCw, Search } from 'lucide-react-nat
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
 import apiService from '../services/apiService';
+import { LoadingState, ErrorState, EmptyState } from '../components/UXStates';
 
 const { width } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ const HomeScreen = ({ navigation }) => {
       const cats = await apiService.getCategories();
       setCategories(cats);
     } catch (err) {
-      setError('Kitaplar yüklenemedi. Sunucu bağlantısını kontrol edin.');
+      setError('Sunucu bağlantısı kurulamadı. İnternet bağlantınızı veya sunucuyu kontrol edin.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -55,6 +56,7 @@ const HomeScreen = ({ navigation }) => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setSelectedCategory(null);
     fetchBooks();
   }, [fetchBooks]);
 
@@ -68,25 +70,12 @@ const HomeScreen = ({ navigation }) => {
 
   // Loading State
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={styles.loadingText}>Kitaplar yükleniyor...</Text>
-      </View>
-    );
+    return <LoadingState message="Kitaplar yükleniyor..." />;
   }
 
   // Error State
   if (error && books.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchBooks}>
-          <RefreshCw size={20} color={Colors.surface} />
-          <Text style={styles.retryText}>Tekrar Dene</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <ErrorState message={error} onRetry={fetchBooks} />;
   }
 
   const renderHeader = () => (

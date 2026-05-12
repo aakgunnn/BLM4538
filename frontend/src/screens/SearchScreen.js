@@ -4,12 +4,14 @@ import { Search as SearchIcon, X } from 'lucide-react-native';
 import Colors from '../constants/Colors';
 import BookCard from '../components/BookCard';
 import apiService from '../services/apiService';
+import { InlineLoading, EmptyState } from '../components/UXStates';
 
 const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [error, setError] = useState(null);
 
   // Debounce timer ref
   const timerRef = React.useRef(null);
@@ -36,6 +38,7 @@ const SearchScreen = ({ navigation }) => {
       } catch (err) {
         console.error('Search error:', err);
         setResults([]);
+        setError('Arama yapılırken hata oluştu. Bağlantınızı kontrol edin.');
       } finally {
         setLoading(false);
       }
@@ -119,7 +122,7 @@ const SearchScreen = ({ navigation }) => {
       ) : loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Aranıyor...</Text>
+          <Text style={styles.loadingText}>Kitaplar aranıyor...</Text>
         </View>
       ) : (
         <FlatList
@@ -139,11 +142,7 @@ const SearchScreen = ({ navigation }) => {
             />
           )}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <SearchIcon size={48} color={Colors.muted} />
-              <Text style={styles.emptyText}>No books found</Text>
-              <Text style={styles.emptySubText}>Try searching with different keywords</Text>
-            </View>
+            <EmptyState type="search" />
           }
           showsVerticalScrollIndicator={false}
         />

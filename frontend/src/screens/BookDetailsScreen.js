@@ -4,6 +4,7 @@ import { ArrowLeft, Star, BookOpen, Calendar, Hash, Heart } from 'lucide-react-n
 import Colors from '../constants/Colors';
 import apiService from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { LoadingState, ErrorState } from '../components/UXStates';
 
 const { width } = Dimensions.get('window');
 
@@ -21,7 +22,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
         const data = await apiService.getBookById(id);
         setBook(data);
       } catch (err) {
-        setError('Kitap bulunamadı.');
+        setError('Kitap bilgileri yüklenemedi. Sunucu bağlantısını kontrol edin.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -31,21 +32,15 @@ const BookDetailsScreen = ({ route, navigation }) => {
   }, [id]);
 
   if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-      </View>
-    );
+    return <LoadingState message="Kitap detayları yükleniyor..." />;
   }
 
   if (error || !book) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || 'Book not found'}</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
-          <Text style={{ color: Colors.primary, fontSize: 16 }}>← Geri Dön</Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorState
+        message={error || 'Kitap bulunamadı.'}
+        onRetry={() => navigation.goBack()}
+      />
     );
   }
 

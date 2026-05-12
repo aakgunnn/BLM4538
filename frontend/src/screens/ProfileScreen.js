@@ -4,6 +4,7 @@ import { User, BookOpen, Clock, Award, Settings, LogOut, ChevronRight, Shield, R
 import Colors from '../constants/Colors';
 import apiService from '../services/apiService';
 import { useAuth } from '../context/AuthContext';
+import { EmptyState, InlineLoading } from '../components/UXStates';
 
 const ProfileScreen = () => {
   const { user, logout, isAdmin } = useAuth();
@@ -101,11 +102,9 @@ const ProfileScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Currently Borrowed</Text>
         {loading ? (
-          <ActivityIndicator size="small" color={Colors.primary} />
+          <InlineLoading message="Ödünçler yükleniyor..." />
         ) : activeBorrowings.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Ödünç alınmış kitap yok</Text>
-          </View>
+          <EmptyState type="borrowings" />
         ) : (
           activeBorrowings.map((item) => (
             <View key={item.id} style={styles.borrowCard}>
